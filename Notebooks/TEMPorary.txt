@@ -1,0 +1,38 @@
+all website information
+from bs4 import BeautifulSoup
+import requests
+
+def website_information(url):
+    headers = {"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # Find all relevant tags for information extraction
+        tags_to_extract = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'span', 'div', 'meta']
+
+        # Extract text from specified tags
+        extracted_texts = [tag.text.strip() for tag in soup.find_all(tags_to_extract)]
+
+        # Save the extracted information to a file
+        with open("all_information.txt", "w", encoding="utf-8") as f:
+            for text in extracted_texts:
+                f.write(text + "\n")
+
+        return "Extraction successful. Check 'all_information.txt' for details."
+
+    except requests.exceptions.HTTPError as e:
+        print(f"HTTP Error: {e}")
+        return "No info"
+    except requests.exceptions.RequestException as e:
+        print(f"Request Exception: {e}")
+        return "No info"
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return "No info"
+
+if __name__ == "__main__":
+    url = "https://www.moneycontrol.com/news/business/markets/short-call-of-beckoning-bector-and-healing-wockhardt-roar-in-hdfc-bank-fan-club-and-copper-craze-11742251.html"
+    information = website_information(url)
+    print(information)
