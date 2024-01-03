@@ -12,8 +12,16 @@ from langchain.chains import RetrievalQA
 from langchain.llms import google_palm
 from langchain.document_loaders.csv_loader import CSVLoader
 from langchain.chains.summarize import load_summarize_chain
-from website_data_collection import website_information
-from url_obtainer import get_url
+import spacy
+import pandas as pd
+import os
+from nltk.corpus import stopwords
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.probability import FreqDist
+from nltk.tokenize.treebank import TreebankWordDetokenizer
+
+# from website_data_collection import website_information
+# from url_obtainer import get_url
 
 google_api_key=os.environ["GOOGLE_API_KEY"]="AIzaSyCEXDkHy_D1HcgADqkeCBQWOIqsz1GiFPA"
 llm=google_palm.GooglePalm()
@@ -81,12 +89,44 @@ def csv_query(file, context=None):
 
     # return context  # Return updated context for potential future use
 
-def summarize(file):
-    loaders=UnstructuredCSVLoader(f"./{file}")
+def summarize(company):
+    # loaders=UnstructuredCSVLoader(f"/../Data/URL/{company}_articles_info.csv")
+    # loaders=UnstructuredCSVLoader(f"../Data/URL/{company}_articles_info.csv")
+    loaders=CSVLoader(f"../Data/URL/{company}_articles_info.csv")
     docs=loaders.load()
     chain=load_summarize_chain(llm,chain_type="stuff")
-    print(chain.run(docs))
-    
+    chain.run(docs)
+    # for doc_tuple in docs:
+    #     doc = doc_tuple[0]  # Access the document object within the tuple
+    #     print(chain.run(doc))
+
+def spacy_summarize(article_text, num_sentences=2):
+    nlp = spacy.load("en_core_web_sm")
+    doc = nlp(article_text)
+    sentences = [sent.text for sent in doc.sents]
+    summary = " ".join(sentences[:num_sentences])
+    return summary
+
+
+def nltk_summarize(article_text, num_sentences=5):
+    sentences = sent_tokenize(article_text)
+    words = word_tokenize(article_text.lower())
+    stop_words = set(stopwords.words("english"))
+    filtered_words = [word for word in words if word.isalnum() and word not in stop_words]
+    freq_dist = FreqDist(filtered_words)
+    top_words = freq_dist.most_common(num_sentences)
+    top_sentences = [sentence for sentence in sentences if any(word in sentence.lower() for word, _ in top_words)]
+    summary = TreebankWordDetokenizer().detokenize(top_sentences)
+    return summary
+
+def summarize_articles(company):
+    df=pd.read_csv(f"../Data/URL/{company}_articles_info.csv")
+    df["summary"]=df["Data"].apply(nltk_summarize)
+    df.to_csv(f"../Data/URL/{company}_summarized2.csv")
+    # for row in df.iterrows():
+    #     print(f"Summary of {row['url']} is \n {row['summary']}")
+    #     print("\n\n")
+
 def random():
     # data=loaders.load()
     # embeddings=GooglePalmEmbeddings()
@@ -108,6 +148,8 @@ if __name__ == "__main__":
     #     for p in data:
     #         f.write(p)
     # query_data(company)
-    file = "article_urls_information.csv"
-    csv_query(file,None)
-    # summarize(file)
+    # file = "article_urls_information.csv"
+    company="INFY"
+    # csv_query(company)
+    # summarize(company)
+    summarize_articles(company)
